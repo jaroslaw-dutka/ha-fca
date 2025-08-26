@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-cp README.md FiatChampAddon/DOCS.md
-cp README.md FiatChampAddon/.
+cp README.md addon/DOCS.md
+cp README.md addon/.
 
-VERSION=$(cat FiatChampAddon/config.yaml| grep version | grep -P -o "[\d\.]*")
+VERSION=$(cat addon/config.yaml| grep version | grep -P -o "[\d\.]*")
 
 echo git tag -a $VERSION -m $VERSION

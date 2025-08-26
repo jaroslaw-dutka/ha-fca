@@ -1,0 +1,17 @@
+{
+  "profiles": {
+    "Mock API": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "FiatChamp_fiat__backend": "Mock"
+      }
+    },
+    "Live API": {
+      "commandName": "Project",
+      "commandLineArgs": "fdghfgh",
+      "environmentVariables": {
+        "FiatChamp_fiat__backend": "Live"
+      }
+    }
+  }
+}
