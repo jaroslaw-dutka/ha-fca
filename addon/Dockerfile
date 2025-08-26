@@ -8,7 +8,7 @@ RUN apk add icu
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 
-COPY FiatClient/build/ /build/.
+COPY src/build/ /build/.
 
 LABEL org.opencontainers.image.source https://github.com/wubbl0rz/FiatChamp
 
