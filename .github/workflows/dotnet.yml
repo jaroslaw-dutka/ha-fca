@@ -37,7 +37,7 @@ jobs:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: create_image
-      uses: home-assistant/builder@2022.09.0
+      uses: home-assistant/builder@master
       with:
         args: |
           ${{ (github.event_name == 'workflow_dispatch' && '--test') || '' }} \
