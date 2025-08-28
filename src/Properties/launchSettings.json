@@ -8,7 +8,6 @@
     },
     "Live API": {
       "commandName": "Project",
-      "commandLineArgs": "fdghfgh",
       "environmentVariables": {
         "FiatChamp_fiat__backend": "Live"
       }
