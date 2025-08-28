@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "Mock API": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "FcaAssistant_fiat__brand": "Mock"
+      }
+    },
+    "Live API": {
+      "commandName": "Project"
+    }
+  }
+}
