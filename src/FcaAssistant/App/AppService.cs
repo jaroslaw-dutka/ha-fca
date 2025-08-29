@@ -83,8 +83,8 @@ public class AppService : IAppService
         var config = await _haApiClient.GetConfigAsync();
         _logger.LogInformation("Using unit system: {unit}", config.UnitSystem.Dump());
 
-        var shouldConvertKmToMiles = _appSettings.ConvertKmToMiles || config.UnitSystem.Length != "km";
-        _logger.LogInformation("Convert km -> miles ? {shouldConvertKmToMiles}", shouldConvertKmToMiles);
+        var targetUnit = _appSettings.DistanceUnit == DistanceUnit.Miles ? "mi" : "km";
+        _logger.LogInformation("Distance conversion: {sourceUnit}->{targetUnit}", config.UnitSystem.Length, targetUnit);
 
         var states = await _haApiClient.GetStatesAsync();
         var zones = states
@@ -115,7 +115,7 @@ public class AppService : IAppService
             await context.ProcessLocationAsync(vehicleInfo.Location, currentZone);
 
             // Details
-            await context.ProcessDetailsAsync(vehicleInfo.Details, shouldConvertKmToMiles);
+            await context.ProcessDetailsAsync(vehicleInfo.Details, targetUnit);
 
             // Remote
             await context.ProcessRemoteAsync(vehicleInfo.Remote);

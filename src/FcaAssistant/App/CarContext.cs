@@ -59,7 +59,7 @@ public class CarContext
         await _haMqttClient.PublishAsync(Location);
     }
 
-    public async Task ProcessDetailsAsync(JsonNode details, bool shouldConvertKmToMiles)
+    public async Task ProcessDetailsAsync(JsonNode details, string targetUnit)
     {
         var flatten = details.Flatten("car");
         foreach (var item in flatten)
@@ -92,15 +92,21 @@ public class CarContext
 
                 flatten.TryGetValue(unitKey, out var tmpUnit);
 
-                if (tmpUnit == "km")
+                if (tmpUnit is "km" or "mi")
                 {
                     sensor.DeviceClass = "distance";
 
-                    if (shouldConvertKmToMiles && int.TryParse(item.Value, out var kmValue))
+                    // TODO: verify 
+                    if (int.TryParse(item.Value, out var rawValue))
                     {
-                        var miValue = Math.Round(kmValue * 0.62137, 2);
-                        sensor.State = miValue.ToString(CultureInfo.InvariantCulture);
-                        tmpUnit = "mi";
+                        var factor = $"{tmpUnit}->{targetUnit}" switch
+                        {
+                            "km->mi" => 0.62137,
+                            "mi->km" => 1.60934,
+                            _ => 1.0
+                        };
+                        sensor.State = Math.Round(rawValue * factor, 2).ToString(CultureInfo.InvariantCulture);
+                        tmpUnit = targetUnit;
                     }
                 }
 

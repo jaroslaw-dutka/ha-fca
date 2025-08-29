@@ -3,7 +3,7 @@
     "Mock API": {
       "commandName": "Project",
       "environmentVariables": {
-        "FcaAssistant_fiat__brand": "Mock"
+        "FcaAssistant_fca__brand": "Mock"
       }
     },
     "Live API": {
