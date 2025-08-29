@@ -1,0 +1,29 @@
+{
+  "branches": ["release", "f/release"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": "ha-fca-linux-x64.zip",
+            "name": "ha-fca-linux-x64.zip",
+            "label": "Linux x64 Release"
+          },
+          {
+            "path": "ha-fca-linux-arm64.zip",
+            "name": "ha-fca-linux-arm64.zip", 
+            "label": "Linux ARM64 Release"
+          },
+          {
+            "path": "ha-fca-linux-arm.zip",
+            "name": "ha-fca-linux-arm.zip",
+            "label": "Linux ARM Release"
+          }
+        ]
+      }
+    ]
+  ]
+}
