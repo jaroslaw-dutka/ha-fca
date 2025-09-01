@@ -1,7 +1,8 @@
 {
   "branches": [
-    {"name": "release"},
-    {"name": "next", "prerelease": true}
+    {"name": "master", "channel": "alpha", "prerelease": true},
+    {"name": "next", "channel": "beta", "prerelease": true},
+    {"name": "release"}
   ],
   "plugins": [
     "@semantic-release/commit-analyzer",
