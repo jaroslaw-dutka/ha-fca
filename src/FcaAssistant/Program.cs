@@ -23,7 +23,7 @@ services.AddFca(configuration);
 services.AddHa(configuration);
 services.AddApp(configuration);
 
-var provider = services.BuildServiceProvider();
+await using var provider = services.BuildServiceProvider();
 
 var app = provider.GetRequiredService<IAppService>();
 if (!cts.IsCancellationRequested)
