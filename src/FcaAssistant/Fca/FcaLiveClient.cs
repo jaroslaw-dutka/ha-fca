@@ -5,24 +5,25 @@ using Amazon.Runtime;
 using FcaAssistant.Aws;
 using FcaAssistant.Fca.Entities;
 using FcaAssistant.Fca.Model;
+using FcaAssistant.Infrastructure.Mqtt;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
-using MQTTnet.Client;
-using MQTTnet.Extensions.ManagedClient;
 
 namespace FcaAssistant.Fca;
 
-public class FcaLiveClient : IFcaClient
+public class FcaLiveClient : MqttClientBase, IFcaClient
 {
+    private static readonly Uri MqttUri = new("wss://ahwxpxjb5ckg1-ats.iot.eu-west-1.amazonaws.com:443/mqtt");
+
     private readonly ILogger<FcaLiveClient> _logger;
     private readonly IFcaApiClient _apiClient;
     private readonly FcaApiConfig _apiConfig;
     private readonly AmazonCognitoIdentityClient _cognitoClient;
     private readonly ConcurrentDictionary<Guid, TaskCompletionSource> _commands = new();
     private FcaSession? _fcaSession;
-    private IManagedMqttClient _client;
 
     public FcaLiveClient(ILogger<FcaLiveClient> logger, IFcaApiConfigProvider configProvider, IFcaApiClient apiClient)
+        : base(logger, "FCA")
     {
         _logger = logger;
         _apiClient = apiClient;
@@ -36,7 +37,9 @@ public class FcaLiveClient : IFcaClient
             return;
 
         await LoginAsync();
-        await ConnectToMqttAsync();
+
+        AddSubscription("channels/" + _fcaSession!.UserId + "/+/notifications/updates");
+        StartMqtt(cancellationToken);
 
         _ = Task.Run(async () =>
         {
@@ -146,14 +149,14 @@ public class FcaLiveClient : IFcaClient
         };
     }
 
-    private async Task ConnectToMqttAsync()
+    protected override MqttClientOptions BuildOptions()
     {
         ArgumentNullException.ThrowIfNull(_fcaSession);
 
-        var baseUri = new Uri("wss://ahwxpxjb5ckg1-ats.iot.eu-west-1.amazonaws.com:443/mqtt");
-        var signedUri = AwsSigner.SignQuery(_fcaSession.AwsCredentials, "GET", baseUri, DateTime.UtcNow, _apiConfig.AwsEndpoint.SystemName, "iotdata", string.Empty);
+        // Re-signed on every (re)connect so reconnects use current, non-expired credentials.
+        var signedUri = AwsSigner.SignQuery(_fcaSession.AwsCredentials, "GET", MqttUri, DateTime.UtcNow, _apiConfig.AwsEndpoint.SystemName, "iotdata", string.Empty);
 
-        var builder = new MqttClientOptionsBuilder()
+        return new MqttClientOptionsBuilder()
             .WithClientId(_apiConfig.ClientId)
             .WithWebSocketServer(builder =>
             {
@@ -163,53 +166,21 @@ public class FcaLiveClient : IFcaClient
                     { "host", signedUri.Host }
                 });
             })
-            .WithCleanSession();
-
-        var options = new ManagedMqttClientOptionsBuilder()
-            .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
-            .WithClientOptions(builder.Build())
+            .WithCleanSession()
             .Build();
+    }
 
-        _client = new MqttFactory().CreateManagedMqttClient();
-        await _client.StartAsync(options);
-
-        _client.ApplicationMessageReceivedAsync += args =>
+    protected override Task OnMessageReceivedAsync(MqttApplicationMessage message)
+    {
+        var item = JsonSerializer.Deserialize<NotificationItem>(message.ConvertPayloadToString());
+        if (_commands.TryRemove(item.CorrelationId, out var commandTask))
         {
-            var msg = args.ApplicationMessage;
-            var payload = msg.ConvertPayloadToString();
+            if (string.Equals(item.Notification.Data.Status, "success", StringComparison.InvariantCultureIgnoreCase))
+                commandTask.SetResult();
+            else
+                commandTask.SetException(new Exception($"Command failed. Status: {item.Notification.Data.Status}."));
+        }
 
-            _logger.LogInformation("MQTT: {topic} - {payload}", msg.Topic, payload);
-
-            var item = JsonSerializer.Deserialize<NotificationItem>(payload);
-            if (_commands.TryRemove(item.CorrelationId, out var commandTask))
-            {
-                if (string.Equals(item.Notification.Data.Status, "success", StringComparison.InvariantCultureIgnoreCase))
-                    commandTask.SetResult();
-                else
-                    commandTask.SetException(new Exception($"Command failed. Status: {item.Notification.Data.Status}."));
-            }
-
-            return Task.CompletedTask;
-        };
-
-        _client.ConnectedAsync += args =>
-        {
-            _logger.LogInformation("Connected to FCA MQTT: {reason}", args.ConnectResult.ReasonString);
-            return Task.CompletedTask;
-        };
-
-        _client.ConnectingFailedAsync += args =>
-        {
-            _logger.LogInformation("Connection to FCA MQTT failed: {reason}", args.ConnectResult.ReasonString);
-            return Task.CompletedTask;
-        };
-
-        _client.DisconnectedAsync += args =>
-        {
-            _logger.LogInformation("Disconnected from FCA MQTT: {reason}", args.ReasonString);
-            return Task.CompletedTask;
-        };
-
-        await _client.SubscribeAsync("channels/" + _fcaSession.UserId + "/+/notifications/updates");
+        return Task.CompletedTask;
     }
 }
