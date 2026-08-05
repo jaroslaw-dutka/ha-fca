@@ -157,7 +157,7 @@ public class AppService : IAppService
 
     private async Task BindSwitch(CarContext context, string name, FcaCommand onCommand, FcaCommand offCommand, string vin) => await context.ProcessSwitchAsync(name, async (entity, state) =>
     {
-        if (await TrySendCommand(entity.IsOn ? offCommand : onCommand, vin))
+        if (await TrySendCommand(entity.IsOn ? onCommand : offCommand, vin))
             _forceLoopResetEvent.Set();
     });
 
