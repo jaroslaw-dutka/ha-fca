@@ -5,3 +5,4 @@ build_*
 .idea
 .vs
 *.user
+/debug/ha_config

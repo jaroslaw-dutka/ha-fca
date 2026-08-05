@@ -1,0 +1,19 @@
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Warsaw
+    volumes:
+      - ./ha_config:/config
+    ports:
+      - 8123:8123
+  mqtt:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Warsaw
+    volumes:
+      - ./mqtt_config:/mosquitto/config
+    ports:
+      - 1883:1883
