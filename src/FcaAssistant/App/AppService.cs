@@ -151,12 +151,14 @@ public class AppService : IAppService
 
     private async Task BindButton(CarContext context, string name, FcaCommand command, string vin) => await context.ProcessButtonAsync(name, async (entity, state) =>
     {
+        _logger.LogDebug("Button {Name} clicked to state: {State}", name, state);
         if (await TrySendCommand(command, vin))
             _forceLoopResetEvent.Set();
     });
 
     private async Task BindSwitch(CarContext context, string name, FcaCommand onCommand, FcaCommand offCommand, string vin) => await context.ProcessSwitchAsync(name, async (entity, state) =>
     {
+        _logger.LogDebug("Switch {Name} changed to state: {State}", name, state);
         if (await TrySendCommand(entity.IsOn ? onCommand : offCommand, vin))
             _forceLoopResetEvent.Set();
     });

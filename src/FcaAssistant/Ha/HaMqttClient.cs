@@ -52,10 +52,17 @@ public class HaMqttClient : MqttClientBase, IHaMqttClient
 
     protected override async Task OnMessageReceivedAsync(MqttApplicationMessage message)
     {
-        if (_setEntities.TryGetValue(message.Topic, out var command))
+        try
         {
-            await command.OnSetAsync(message.ConvertPayloadToString());
-            await PublishAsync(command);
+            if (_setEntities.TryGetValue(message.Topic, out var command))
+            {
+                await command.OnSetAsync(message.ConvertPayloadToString());
+                await PublishAsync(command);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error processing MQTT message with topic: {Topic}", message.Topic);
         }
     }
 
