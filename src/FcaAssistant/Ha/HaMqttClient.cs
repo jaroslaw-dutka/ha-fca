@@ -59,6 +59,10 @@ public class HaMqttClient : MqttClientBase, IHaMqttClient
                 await command.OnSetAsync(message.ConvertPayloadToString());
                 await PublishAsync(command);
             }
+            else
+            {
+                Logger.LogWarning("Unhandled MQTT message with topic: {Topic}", message.Topic);
+            }
         }
         catch (Exception ex)
         {
@@ -94,8 +98,12 @@ public class HaMqttClient : MqttClientBase, IHaMqttClient
             await PublishAsync(GetTopic(entity, HaMqttTopic.Attributes), attributesEntity.SerializedAttributes, retain: true);
     }
 
-    public void Subscribe(IHaSetEntity entity) =>
-        _setEntities.Add(GetTopic(entity, HaMqttTopic.Set), entity);
+    public void Subscribe(IHaSetEntity entity)
+    {
+        var topic = GetTopic(entity, HaMqttTopic.Set);
+        Logger.LogDebug("Subscribing to topic: {Topic}", topic);
+        _setEntities.Add(topic, entity);
+    }
 
     private string GetTopic(IHaEntity entity, HaMqttTopic topic) =>
         GetTopic(entity.Type, entity.Id, topic);
