@@ -83,6 +83,23 @@ public class FcaLiveClient : MqttClientBase, IFcaClient
         return result;
     }
 
+    public async Task<bool> TrySendCommandAsync(string vin, string command, string pin, string action)
+    {
+        try
+        {
+            await SendCommandAsync(vin, command, pin, action);
+            await Task.Delay(TimeSpan.FromSeconds(5));
+            _logger.LogInformation("Command: {command} SUCCESSFUL", command);
+            return true;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError("Command: {command} ERROR. Maybe wrong pin?", command);
+            _logger.LogDebug(e, e.Message);
+            return false;
+        }
+    }
+
     public async Task SendCommandAsync(string vin, string command, string pin, string action)
     {
         ArgumentNullException.ThrowIfNull(_fcaSession);
@@ -104,23 +121,6 @@ public class FcaLiveClient : MqttClientBase, IFcaClient
 
         if (index < 0)
             throw new TimeoutException("Command timed out");
-    }
-
-    public async Task<bool> TrySendCommandAsync(string vin, string command, string pin, string action)
-    {
-        try
-        {
-            await SendCommandAsync(vin, command, pin, action);
-            await Task.Delay(TimeSpan.FromSeconds(5));
-            _logger.LogInformation("Command: {command} SUCCESSFUL", command);
-            return true;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("Command: {command} ERROR. Maybe wrong pin?", command);
-            _logger.LogDebug(e, e.Message);
-            return false;
-        }
     }
 
     private async Task LoginAsync()

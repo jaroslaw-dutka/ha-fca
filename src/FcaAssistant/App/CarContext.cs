@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Nodes;
+﻿using System.Text.Json.Nodes;
 using FcaAssistant.App.Mapping;
 using FcaAssistant.Extensions;
 using FcaAssistant.Fca.Model;
