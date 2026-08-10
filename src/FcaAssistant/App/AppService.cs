@@ -20,7 +20,8 @@ public class AppService(
     IFcaClient fcaClient,
     IHaApiClient haApiClient,
     IHaMqttClient haMqttClient,
-    IVehicleDetailsMapper detailsMapper)
+    IVehicleDetailsMapper detailsMapper,
+    IHaEntityPublisher publisher)
     : IAppService
 {
     private readonly AutoResetEvent _forceLoopResetEvent = new(false);
@@ -99,7 +100,7 @@ public class AppService(
 
             if (!_cars.TryGetValue(vehicleInfo.Vehicle.Vin, out var context))
             {
-                context = new CarContext(haMqttClient, detailsMapper, vehicleInfo.Vehicle);
+                context = new CarContext(publisher, detailsMapper, vehicleInfo.Vehicle);
                 _cars.TryAdd(vehicleInfo.Vehicle.Vin, context);
             }
 
