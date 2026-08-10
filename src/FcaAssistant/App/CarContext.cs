@@ -1,6 +1,6 @@
-﻿using System.Globalization;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Nodes;
+using FcaAssistant.App.Mapping;
 using FcaAssistant.Extensions;
 using FcaAssistant.Fca.Model;
 using FcaAssistant.Ha;
@@ -9,7 +9,7 @@ using FcaAssistant.Ha.Model;
 
 namespace FcaAssistant.App;
 
-public class CarContext(IHaMqttClient haMqttClient, Vehicle vehicle)
+public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detailsMapper, Vehicle vehicle)
 {
     public string Vin { get; } = vehicle.Vin;
     public HaDevice Device { get; } = new()
@@ -51,68 +51,24 @@ public class CarContext(IHaMqttClient haMqttClient, Vehicle vehicle)
 
     public async Task ProcessDetailsAsync(JsonNode details, string targetUnit)
     {
-        var flatten = details.Flatten("car");
-        foreach (var item in flatten)
+        var properties = details.Flatten("car");
+        foreach (var item in properties)
         {
             if (item.Key.EndsWith("_unit"))
                 continue;
 
-            if (!Sensors.TryGetValue(item.Key, out var sensor))
+            var isExisting = Sensors.TryGetValue(item.Key, out var sensor);
+            sensor ??= new HaSensor(Device, item.Key);
+            
+            var presentation = detailsMapper.Map(item.Key, item.Value, targetUnit, properties);
+            sensor.State = presentation.State;
+            sensor.DeviceClass = presentation.DeviceClass;
+            sensor.UnitOfMeasurement = presentation.UnitOfMeasurement;
+
+            if (!isExisting)
             {
-                sensor = new HaSensor(Device, item.Key);
                 Sensors.Add(item.Key, sensor);
                 await haMqttClient.AnnounceAsync(sensor);
-            }
-
-            sensor.State = item.Value;
-
-            if (sensor.Name == "car_evInfo_battery_stateOfCharge")
-            {
-                sensor.DeviceClass = "battery";
-                sensor.UnitOfMeasurement = "%";
-            }
-            else if (sensor.Name == "car_evInfo_battery_timeToFullyChargeL2")
-            {
-                sensor.DeviceClass = "duration";
-                sensor.UnitOfMeasurement = "min";
-            }
-            else if (item.Key.EndsWith("_value"))
-            {
-                var unitKey = item.Key.Replace("_value", "_unit");
-
-                flatten.TryGetValue(unitKey, out var tmpUnit);
-
-                if (tmpUnit is "km" or "mi")
-                {
-                    sensor.DeviceClass = "distance";
-
-                    // TODO: verify 
-                    if (int.TryParse(item.Value, out var rawValue))
-                    {
-                        var factor = $"{tmpUnit}->{targetUnit}" switch
-                        {
-                            "km->mi" => 0.62137,
-                            "mi->km" => 1.60934,
-                            _ => 1.0
-                        };
-                        sensor.State = Math.Round(rawValue * factor, 2).ToString(CultureInfo.InvariantCulture);
-                        tmpUnit = targetUnit;
-                    }
-                }
-
-                switch (tmpUnit)
-                {
-                    case "volts":
-                        sensor.DeviceClass = "voltage";
-                        sensor.UnitOfMeasurement = "V";
-                        break;
-                    case null or "null":
-                        sensor.UnitOfMeasurement = "";
-                        break;
-                    default:
-                        sensor.UnitOfMeasurement = tmpUnit;
-                        break;
-                }
             }
 
             await haMqttClient.PublishAsync(sensor);

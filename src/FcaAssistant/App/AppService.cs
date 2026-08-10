@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Text.Json;
 using CoordinateSharp;
+using FcaAssistant.App.Mapping;
 using FcaAssistant.Extensions;
 using FcaAssistant.Fca;
 using FcaAssistant.Fca.Model;
@@ -18,7 +19,8 @@ public class AppService(
     IOptions<FcaSettings> fcaConfig,
     IFcaClient fcaClient,
     IHaApiClient haApiClient,
-    IHaMqttClient haMqttClient)
+    IHaMqttClient haMqttClient,
+    IVehicleDetailsMapper detailsMapper)
     : IAppService
 {
     private readonly AutoResetEvent _forceLoopResetEvent = new(false);
@@ -97,7 +99,7 @@ public class AppService(
 
             if (!_cars.TryGetValue(vehicleInfo.Vehicle.Vin, out var context))
             {
-                context = new CarContext(haMqttClient, vehicleInfo.Vehicle);
+                context = new CarContext(haMqttClient, detailsMapper, vehicleInfo.Vehicle);
                 _cars.TryAdd(vehicleInfo.Vehicle.Vin, context);
             }
 
