@@ -11,7 +11,6 @@ namespace FcaAssistant.App;
 
 public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detailsMapper, Vehicle vehicle)
 {
-    public string Vin { get; } = vehicle.Vin;
     public HaDevice Device { get; } = new()
     {
         Name = string.IsNullOrEmpty(vehicle.Nickname) ? "Car" : vehicle.Nickname,
@@ -21,24 +20,24 @@ public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detail
         Version = "1.0"
     };
 
-    public HaSensor<HaLocation>? Location { get; private set;}
-    public HaSensor? Timestamp { get; private set; }
-    public Dictionary<string, HaSensor> Sensors { get; } = new();
-    public Dictionary<string, HaEntity> Entities { get;} = new();
+    private HaSensor<HaLocation>? _location;
+    private HaSensor? _timestamp;
+    private readonly Dictionary<string, HaSensor> _sensors = new();
+    private readonly Dictionary<string, HaEntity> _entities = new();
 
     public async Task ProcessLocationAsync(VehicleLocation location, string zone)
     {
-        if (Location is null)
+        if (_location is null)
         {
-            Location = new HaSensor<HaLocation>(Device, "CAR_LOCATION")
+            _location = new HaSensor<HaLocation>(Device, "CAR_LOCATION")
             {
                 Icon = "mdi:map-marker"
             };
-            await haMqttClient.AnnounceAsync(Location);
+            await haMqttClient.AnnounceAsync(_location);
         }
 
-        Location.State = zone;
-        Location.Attributes = new HaLocation
+        _location.State = zone;
+        _location.Attributes = new HaLocation
         {
             Latitude = location.Latitude,
             Longitude = location.Longitude,
@@ -46,7 +45,7 @@ public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detail
             GpsAccuracy = 2
         };
 
-        await haMqttClient.PublishAsync(Location);
+        await haMqttClient.PublishAsync(_location);
     }
 
     public async Task ProcessSensorsAsync(JsonNode details, string targetUnit, string prefix)
@@ -58,11 +57,11 @@ public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detail
 
     public async Task ProcessButtonAsync(string name, Func<HaButton, string, Task> action)
     {
-        if (Entities.ContainsKey(name))
+        if (_entities.ContainsKey(name))
             return;
 
         var button = new HaButton(Device, name, action);
-        Entities.Add(name, button);
+        _entities.Add(name, button);
 
         haMqttClient.Subscribe(button);
         await haMqttClient.AnnounceAsync(button);
@@ -70,11 +69,11 @@ public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detail
 
     public async Task ProcessSwitchAsync(string name, Func<HaSwitch, string, Task> action)
     {
-        if (Entities.ContainsKey(name))
+        if (_entities.ContainsKey(name))
             return;
 
         var @switch = new HaSwitch(Device, name, action);
-        Entities.Add(name, @switch);
+        _entities.Add(name, @switch);
 
         haMqttClient.Subscribe(@switch);
         await haMqttClient.AnnounceAsync(@switch);
@@ -82,24 +81,24 @@ public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detail
 
     public async Task ProcessTimestampAsync()
     {
-        if (Timestamp is null)
+        if (_timestamp is null)
         {
-            Timestamp = new HaSensor(Device, "LAST_UPDATE")
+            _timestamp = new HaSensor(Device, "LAST_UPDATE")
             {
                 DeviceClass = "timestamp",
                 Icon = "mdi:timer-sync"
             };
-            await haMqttClient.AnnounceAsync(Timestamp);
+            await haMqttClient.AnnounceAsync(_timestamp);
         }
 
-        Timestamp.State = DateTime.Now.ToString("O");
+        _timestamp.State = DateTime.Now.ToString("O");
 
-        await haMqttClient.PublishAsync(Timestamp);
+        await haMqttClient.PublishAsync(_timestamp);
     }
 
     public async Task SetSwitchStateAsync(string name, bool isOn)
     {
-        if (!Entities.TryGetValue(name, out var entity) || entity is not HaSwitch @switch)
+        if (!_entities.TryGetValue(name, out var entity) || entity is not HaSwitch @switch)
             return;
 
         @switch.SetState(isOn);
@@ -108,7 +107,7 @@ public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detail
 
     private async Task PublishSensorAsync(string key, SensorPresentation presentation)
     {
-        var isNew = !Sensors.TryGetValue(key, out var sensor);
+        var isNew = !_sensors.TryGetValue(key, out var sensor);
         sensor ??= new HaSensor(Device, key);
 
         sensor.State = presentation.State;
@@ -117,7 +116,7 @@ public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detail
 
         if (isNew)
         {
-            Sensors.Add(key, sensor);
+            _sensors.Add(key, sensor);
             await haMqttClient.AnnounceAsync(sensor);
         }
 
