@@ -13,8 +13,8 @@ public interface IFcaApiClient
     Task<FcaPinAuthResponse> AuthenticatePin(FcaSession session, string pin);
     Task<FcaCommandResponse> SendCommand(FcaSession session, string pinToken, string vin, string action, string command);
     Task<VehicleResponse> GetVehicles(FcaSession session);
-    Task<JsonObject> GetVehicleDetails(FcaSession session, string vin);
     Task<VehicleLocation> GetVehicleLocation(FcaSession session, string vin);
-    Task<VehicleRemoteStatus> GetVehicleRemoteStatus(FcaSession session, string vin);
+    Task<JsonObject> GetVehicleDetails(FcaSession session, string vin);
+    Task<JsonObject> GetVehicleRemoteStatus(FcaSession session, string vin);
     Task<NotificationsResponse> GetNotifications(FcaSession session);
 }

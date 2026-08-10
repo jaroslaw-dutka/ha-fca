@@ -37,6 +37,9 @@
     <None Update="Mocks\location.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Mocks\remote.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Mocks\vehicles.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

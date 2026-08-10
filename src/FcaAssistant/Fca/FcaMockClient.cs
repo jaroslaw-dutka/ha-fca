@@ -20,7 +20,8 @@ public class FcaMockClient(ILogger<FcaMockClient> logger) : IFcaClient
         {
             Vehicle = _serializer.Deserialize<Vehicle>(File.OpenRead("./Mocks/vehicles.json")),
             Location = _serializer.Deserialize<VehicleLocation>(File.OpenRead("./Mocks/location.json")),
-            Details = _serializer.Deserialize<JsonObject>(File.OpenRead("./Mocks/details.json"))
+            Details = _serializer.Deserialize<JsonObject>(File.OpenRead("./Mocks/details.json")),
+            Remote = _serializer.Deserialize<JsonObject>(File.OpenRead("./Mocks/remote.json")),
         }
     });
 

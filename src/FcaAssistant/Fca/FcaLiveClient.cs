@@ -74,8 +74,8 @@ public class FcaLiveClient : MqttClientBase, IFcaClient
             result.Add(new VehicleInfo
             {
                 Vehicle = vehicle,
-                Details = await _apiClient.GetVehicleDetails(_fcaSession, vehicle.Vin),
                 Location = await _apiClient.GetVehicleLocation(_fcaSession, vehicle.Vin),
+                Details = await _apiClient.GetVehicleDetails(_fcaSession, vehicle.Vin),
                 Remote = await _apiClient.GetVehicleRemoteStatus(_fcaSession, vehicle.Vin)
             });
         }

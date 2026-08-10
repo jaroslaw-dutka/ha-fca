@@ -49,51 +49,11 @@ public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detail
         await haMqttClient.PublishAsync(Location);
     }
 
-    public async Task ProcessDetailsAsync(JsonNode details, string targetUnit)
+    public async Task ProcessSensorsAsync(JsonNode details, string targetUnit, string prefix)
     {
-        var properties = details.Flatten("car");
-        foreach (var item in properties)
-        {
-            if (item.Key.EndsWith("_unit"))
-                continue;
-
-            var isExisting = Sensors.TryGetValue(item.Key, out var sensor);
-            sensor ??= new HaSensor(Device, item.Key);
-            
-            var presentation = detailsMapper.Map(item.Key, item.Value, targetUnit, properties);
-            sensor.State = presentation.State;
-            sensor.DeviceClass = presentation.DeviceClass;
-            sensor.UnitOfMeasurement = presentation.UnitOfMeasurement;
-
-            if (!isExisting)
-            {
-                Sensors.Add(item.Key, sensor);
-                await haMqttClient.AnnounceAsync(sensor);
-            }
-
-            await haMqttClient.PublishAsync(sensor);
-        }
-    }
-
-    public async Task ProcessRemoteAsync(VehicleRemoteStatus remoteStatus)
-    {
-        var json = JsonSerializer.Serialize(remoteStatus);
-        var status = JsonSerializer.Deserialize<JsonObject>(json);
-
-        var flatten = status.Flatten("car_remote");
-        foreach (var item in flatten)
-        {
-            if (!Sensors.TryGetValue(item.Key, out var sensor))
-            {
-                sensor = new HaSensor(Device, item.Key);
-                Sensors.Add(item.Key, sensor);
-                await haMqttClient.AnnounceAsync(sensor);
-            }
-
-            sensor.State = item.Value;
-
-            await haMqttClient.PublishAsync(sensor);
-        }
+        var properties = details.Flatten(prefix);
+        foreach (var item in properties.Where(item => !item.Key.EndsWith("_unit"))) 
+            await PublishSensorAsync(item.Key, detailsMapper.Map(item.Key, item.Value, targetUnit, properties));
     }
 
     public async Task ProcessButtonAsync(string name, Func<HaButton, string, Task> action)
@@ -144,5 +104,23 @@ public class CarContext(IHaMqttClient haMqttClient, IVehicleDetailsMapper detail
 
         @switch.SetState(isOn);
         await haMqttClient.PublishAsync(@switch);
+    }
+
+    private async Task PublishSensorAsync(string key, SensorPresentation presentation)
+    {
+        var isNew = !Sensors.TryGetValue(key, out var sensor);
+        sensor ??= new HaSensor(Device, key);
+
+        sensor.State = presentation.State;
+        sensor.DeviceClass = presentation.DeviceClass;
+        sensor.UnitOfMeasurement = presentation.UnitOfMeasurement;
+
+        if (isNew)
+        {
+            Sensors.Add(key, sensor);
+            await haMqttClient.AnnounceAsync(sensor);
+        }
+
+        await haMqttClient.PublishAsync(sensor);
     }
 }

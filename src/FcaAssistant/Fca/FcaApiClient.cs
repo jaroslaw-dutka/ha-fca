@@ -99,14 +99,6 @@ public class FcaApiClient(
         .GetJsonAsync<VehicleResponse>()
         .DumpResponseAsync(_logger);
 
-    public async Task<JsonObject> GetVehicleDetails(FcaSession session, string vin) => await _flurlClient
-        .Request(_apiConfig.ApiUrl)
-        .AppendPathSegments("v2", "accounts", session.UserId, "vehicles", vin, "status")
-        .WithHeaders(WithAwsHeaders(_apiConfig.ApiKey))
-        .SignAws(session.AwsCredentials, _apiConfig.AwsEndpoint)
-        .GetJsonAsync<JsonObject>()
-        .DumpResponseAsync(_logger);
-
     public async Task<VehicleLocation> GetVehicleLocation(FcaSession session, string vin) => await _flurlClient
         .Request(_apiConfig.ApiUrl)
         .AppendPathSegments("v1", "accounts", session.UserId, "vehicles", vin, "location", "lastknown")
@@ -115,12 +107,20 @@ public class FcaApiClient(
         .GetJsonAsync<VehicleLocation>()
         .DumpResponseAsync(_logger);
 
-    public async Task<VehicleRemoteStatus> GetVehicleRemoteStatus(FcaSession session, string vin) => await _flurlClient
+    public async Task<JsonObject> GetVehicleDetails(FcaSession session, string vin) => await _flurlClient
+        .Request(_apiConfig.ApiUrl)
+        .AppendPathSegments("v2", "accounts", session.UserId, "vehicles", vin, "status")
+        .WithHeaders(WithAwsHeaders(_apiConfig.ApiKey))
+        .SignAws(session.AwsCredentials, _apiConfig.AwsEndpoint)
+        .GetJsonAsync<JsonObject>()
+        .DumpResponseAsync(_logger);
+
+    public async Task<JsonObject> GetVehicleRemoteStatus(FcaSession session, string vin) => await _flurlClient
         .Request(_apiConfig.ApiUrl)
         .AppendPathSegments("v1", "accounts", session.UserId, "vehicles", vin, "remote", "status")
         .WithHeaders(WithAwsHeaders(_apiConfig.ApiKey))
         .SignAws(session.AwsCredentials, _apiConfig.AwsEndpoint)
-        .GetJsonAsync<VehicleRemoteStatus>()
+        .GetJsonAsync<JsonObject>()
         .DumpResponseAsync(_logger);
 
     public async Task<NotificationsResponse> GetNotifications(FcaSession session) => await _flurlClient

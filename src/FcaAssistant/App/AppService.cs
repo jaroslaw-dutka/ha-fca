@@ -110,10 +110,10 @@ public class AppService(
             await context.ProcessLocationAsync(vehicleInfo.Location, currentZone);
 
             // Details
-            await context.ProcessDetailsAsync(vehicleInfo.Details, targetUnit);
+            await context.ProcessSensorsAsync(vehicleInfo.Details, targetUnit, "car");
 
             // Remote
-            await context.ProcessRemoteAsync(vehicleInfo.Remote);
+            await context.ProcessSensorsAsync(vehicleInfo.Remote, targetUnit, "car_remote");
 
             // Buttons
             await BindButton(context, "Blink", FcaCommands.Blink, vehicleInfo.Vehicle.Vin);

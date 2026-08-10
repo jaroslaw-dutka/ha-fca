@@ -1,0 +1,15 @@
+﻿{
+  "doors": {
+    "rightRear": { "status": "LOCKED" },
+    "driver": { "status": "LOCKED" },
+    "passenger": { "status": "LOCKED" },
+    "leftRear": { "status": "LOCKED" }
+  },
+  "evRunning": { "status": "OFF" },
+  "trunk": { "status": "LOCKED" },
+  "windows": {
+    "driver": { "status": "CLOSED" },
+    "passenger": { "status": "CLOSED" }
+  },
+  "timestamp": 1786339776428
+}
