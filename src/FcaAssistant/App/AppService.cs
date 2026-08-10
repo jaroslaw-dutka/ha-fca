@@ -132,7 +132,9 @@ public class AppService : IAppService
             await BindSwitch(context, "Climate", FcaCommands.ClimateOn, FcaCommands.ClimateOff, vehicleInfo.Vehicle.Vin);
             await BindSwitch(context, "Trunk", FcaCommands.TrunkUnlock, FcaCommands.TrunkLock, vehicleInfo.Vehicle.Vin);
 
-            // Timestamp 
+            await AutoOffClimateAsync(context, states);
+
+            // Timestamp
             await context.ProcessTimestampAsync();
         }
     }
@@ -162,6 +164,48 @@ public class AppService : IAppService
         if (await TrySendCommand(entity.IsOn ? onCommand : offCommand, vin))
             _forceLoopResetEvent.Set();
     });
+
+    private async Task AutoOffClimateAsync(CarContext context, IReadOnlyList<HaRestApiEntityState> states)
+    {
+        var entityState = FindSwitchState(states, context.Device.Name, "Climate");
+        if (entityState is null)
+        {
+            _logger.LogDebug("Auto-off: Climate switch not found in HA states for device {Device}.", context.Device.Name);
+            return;
+        }
+
+        if (!string.Equals(entityState.State, "on", StringComparison.OrdinalIgnoreCase) || entityState.LastChanged is null)
+            return;
+
+        var onFor = DateTimeOffset.UtcNow - entityState.LastChanged.Value;
+        if (onFor < TimeSpan.FromMinutes(_appSettings.RefreshInterval))
+            return;
+
+        _logger.LogInformation("Auto-clearing Climate switch in HomeAssistant after {Minutes:F0} min ON (no OFF command sent).", onFor.TotalMinutes);
+        await context.SetSwitchStateAsync("Climate", false);
+    }
+
+    // HA derives the entity_id / friendly_name from the device and entity names, so match on either.
+    private static HaRestApiEntityState? FindSwitchState(IReadOnlyList<HaRestApiEntityState> states, string deviceName, string switchName)
+    {
+        var expectedEntityId = $"switch.{Slugify(deviceName)}_{Slugify(switchName)}";
+        var expectedFriendlyName = $"{deviceName} {switchName}";
+
+        return states.FirstOrDefault(state =>
+            string.Equals(state.EntityId, expectedEntityId, StringComparison.OrdinalIgnoreCase) ||
+            (state.EntityId.StartsWith("switch.", StringComparison.OrdinalIgnoreCase) &&
+             state.Attributes.TryGetPropertyValue("friendly_name", out var friendlyName) &&
+             string.Equals(friendlyName?.GetValue<string>(), expectedFriendlyName, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    // Approximates Home Assistant's slugify: lower-case, non-alphanumerics collapsed to single underscores, trimmed.
+    private static string Slugify(string value)
+    {
+        var slug = new string(value.ToLowerInvariant().Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray());
+        while (slug.Contains("__"))
+            slug = slug.Replace("__", "_");
+        return slug.Trim('_');
+    }
 
     private async Task<bool> TrySendCommand(FcaCommand command, string vin)
     {

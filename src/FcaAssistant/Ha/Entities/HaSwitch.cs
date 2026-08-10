@@ -22,4 +22,6 @@ public class HaSwitch : HaEntity, IHaStateEntity
         IsOn = state == OnState;
         await _setAction(this, state);
     }
+
+    public void SetState(bool isOn) => IsOn = isOn;
 }

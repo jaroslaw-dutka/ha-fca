@@ -13,4 +13,7 @@ public class HaRestApiEntityState
 
     [JsonPropertyName("attributes")]
     public JsonObject Attributes { get; set; } = new();
+
+    [JsonPropertyName("last_changed")]
+    public DateTimeOffset? LastChanged { get; set; }
 }

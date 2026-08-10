@@ -190,4 +190,13 @@ public class CarContext
 
         await _haMqttClient.PublishAsync(Timestamp);
     }
+
+    public async Task SetSwitchStateAsync(string name, bool isOn)
+    {
+        if (!Entities.TryGetValue(name, out var entity) || entity is not HaSwitch @switch)
+            return;
+
+        @switch.SetState(isOn);
+        await _haMqttClient.PublishAsync(@switch);
+    }
 }
