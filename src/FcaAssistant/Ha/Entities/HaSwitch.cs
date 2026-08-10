@@ -2,25 +2,19 @@ using FcaAssistant.Ha.Model;
 
 namespace FcaAssistant.Ha.Entities;
 
-public class HaSwitch : HaEntity, IHaStateEntity
+public class HaSwitch(HaDevice device, string name, Func<HaSwitch, string, Task> setAction)
+    : HaEntity(device, "switch", name), IHaStateEntity
 {
-    private readonly Func<HaSwitch, string, Task> _setAction;
-
     public const string OnState = "ON";
     public const string OffState = "OFF";
 
     public bool IsOn { get; private set; }
     public string State => IsOn ? OnState : OffState;
 
-    public HaSwitch(HaDevice device, string name, Func<HaSwitch, string, Task> setAction) : base(device, "switch", name)
-    {
-        _setAction = setAction;
-    }
-
     public async Task OnSetAsync(string state)
     {
         IsOn = state == OnState;
-        await _setAction(this, state);
+        await setAction(this, state);
     }
 
     public void SetState(bool isOn) => IsOn = isOn;

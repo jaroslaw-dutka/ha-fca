@@ -12,64 +12,57 @@ using Microsoft.Extensions.Options;
 
 namespace FcaAssistant.App;
 
-public class AppService : IAppService
+public class AppService(
+    ILogger<AppService> logger,
+    IOptions<AppSettings> appConfig,
+    IOptions<FcaSettings> fcaConfig,
+    IFcaClient fcaClient,
+    IHaApiClient haApiClient,
+    IHaMqttClient haMqttClient)
+    : IAppService
 {
     private readonly AutoResetEvent _forceLoopResetEvent = new(false);
     private readonly ConcurrentDictionary<string, CarContext> _cars = new();
 
-    private readonly ILogger<AppService> _logger;
-    private readonly AppSettings _appSettings;
-    private readonly FcaSettings _fcaSettings;
-    private readonly IFcaClient _fcaClient;
-    private readonly IHaApiClient _haApiClient;
-    private readonly IHaMqttClient _haMqttClient;
-
-    public AppService(ILogger<AppService> logger, IOptions<AppSettings> appConfig, IOptions<FcaSettings> fcaConfig, IFcaClient fcaClient, IHaApiClient haApiClient, IHaMqttClient haMqttClient)
-    {
-        _logger = logger;
-        _appSettings = appConfig.Value;
-        _fcaSettings = fcaConfig.Value;
-        _fcaClient = fcaClient;
-        _haApiClient = haApiClient;
-        _haMqttClient = haMqttClient;
-    }
+    private readonly AppSettings _appSettings = appConfig.Value;
+    private readonly FcaSettings _fcaSettings = fcaConfig.Value;
 
     public async Task RunAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Delay start for seconds: {delay}", _appSettings.StartDelaySeconds);
+        logger.LogInformation("Delay start for seconds: {delay}", _appSettings.StartDelaySeconds);
         await Task.Delay(TimeSpan.FromSeconds(_appSettings.StartDelaySeconds), cancellationToken);
 
-        _logger.LogInformation("Connecting to HomeAssistant");
-        await _haMqttClient.ConnectAsync(cancellationToken);
+        logger.LogInformation("Connecting to HomeAssistant");
+        await haMqttClient.ConnectAsync(cancellationToken);
 
-        _logger.LogInformation("Connecting to {brand}", _fcaSettings.Brand);
-        await _fcaClient.ConnectAsync(cancellationToken);
+        logger.LogInformation("Connecting to {brand}", _fcaSettings.Brand);
+        await fcaClient.ConnectAsync(cancellationToken);
 
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
                 await FetchData(cancellationToken);
-                _logger.LogInformation("Processing COMPLETED.");
+                logger.LogInformation("Processing COMPLETED.");
             }
             catch (FlurlHttpException exception)
             {
-                if (_logger.IsEnabled(LogLevel.Debug))
+                if (logger.IsEnabled(LogLevel.Debug))
                 {
                     var responseTask = exception.Call?.Response?.GetStringAsync();
                     var response = responseTask != null ? await responseTask : string.Empty;
-                    _logger.LogDebug(exception, "Processing FAILED. STATUS: {status}, MESSAGE: {message}, RESPONSE: {response}", exception.StatusCode, exception.Message, response);
+                    logger.LogDebug(exception, "Processing FAILED. STATUS: {status}, MESSAGE: {message}, RESPONSE: {response}", exception.StatusCode, exception.Message, response);
                 }
                 else
-                    _logger.LogWarning("Processing FAILED. Error connecting to the {brand} API. This can happen from time to time.", _fcaSettings.Brand);
+                    logger.LogWarning("Processing FAILED. Error connecting to the {brand} API. This can happen from time to time.", _fcaSettings.Brand);
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Processing FAILED");
+                logger.LogError(exception, "Processing FAILED");
             }
             finally
             {
-                _logger.LogInformation("Next update in {delay} minutes.", _appSettings.RefreshInterval);
+                logger.LogInformation("Next update in {delay} minutes.", _appSettings.RefreshInterval);
             }
                 
             WaitHandle.WaitAny([cancellationToken.WaitHandle, _forceLoopResetEvent], TimeSpan.FromMinutes(_appSettings.RefreshInterval));
@@ -78,23 +71,23 @@ public class AppService : IAppService
 
     private async Task FetchData(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching new data...");
+        logger.LogInformation("Fetching new data...");
 
-        var config = await _haApiClient.GetConfigAsync();
-        _logger.LogInformation("Using unit system: {unit}", config.UnitSystem.Dump());
+        var config = await haApiClient.GetConfigAsync();
+        logger.LogInformation("Using unit system: {unit}", config.UnitSystem.Dump());
 
         var targetUnit = _appSettings.DistanceUnit == DistanceUnit.Miles ? "mi" : "km";
-        _logger.LogInformation("Distance conversion: {sourceUnit}->{targetUnit}", config.UnitSystem.Length, targetUnit);
+        logger.LogInformation("Distance conversion: {sourceUnit}->{targetUnit}", config.UnitSystem.Length, targetUnit);
 
-        var states = await _haApiClient.GetStatesAsync();
+        var states = await haApiClient.GetStatesAsync();
         var zones = states
             .Where(state => state.EntityId.StartsWith("zone."))
             .Select(state => state.Attributes.Deserialize<HaRestApiZone>()!)
             .ToList();
 
-        foreach (var vehicleInfo in await _fcaClient.GetVehiclesAsync())
+        foreach (var vehicleInfo in await fcaClient.GetVehiclesAsync())
         {
-            _logger.LogInformation("Processing CAR: {vin}", vehicleInfo.Vehicle.Vin);
+            logger.LogInformation("Processing CAR: {vin}", vehicleInfo.Vehicle.Vin);
 
             if (_appSettings.AutoRefreshBattery) 
                 await TrySendCommand(FcaCommands.DeepRefresh, vehicleInfo.Vehicle.Vin);
@@ -104,7 +97,7 @@ public class AppService : IAppService
 
             if (!_cars.TryGetValue(vehicleInfo.Vehicle.Vin, out var context))
             {
-                context = new CarContext(_haMqttClient, vehicleInfo.Vehicle);
+                context = new CarContext(haMqttClient, vehicleInfo.Vehicle);
                 _cars.TryAdd(vehicleInfo.Vehicle.Vin, context);
             }
 
@@ -153,14 +146,14 @@ public class AppService : IAppService
 
     private async Task BindButton(CarContext context, string name, FcaCommand command, string vin) => await context.ProcessButtonAsync(name, async (entity, state) =>
     {
-        _logger.LogDebug("Button {Name} clicked to state: {State}", name, state);
+        logger.LogDebug("Button {Name} clicked to state: {State}", name, state);
         if (await TrySendCommand(command, vin))
             _forceLoopResetEvent.Set();
     });
 
     private async Task BindSwitch(CarContext context, string name, FcaCommand onCommand, FcaCommand offCommand, string vin) => await context.ProcessSwitchAsync(name, async (entity, state) =>
     {
-        _logger.LogDebug("Switch {Name} changed to state: {State}", name, state);
+        logger.LogDebug("Switch {Name} changed to state: {State}", name, state);
         if (await TrySendCommand(entity.IsOn ? onCommand : offCommand, vin))
             _forceLoopResetEvent.Set();
     });
@@ -170,7 +163,7 @@ public class AppService : IAppService
         var entityState = FindSwitchState(states, context.Device.Name, "Climate");
         if (entityState is null)
         {
-            _logger.LogDebug("Auto-off: Climate switch not found in HA states for device {Device}.", context.Device.Name);
+            logger.LogDebug("Auto-off: Climate switch not found in HA states for device {Device}.", context.Device.Name);
             return;
         }
 
@@ -181,7 +174,7 @@ public class AppService : IAppService
         if (onFor < TimeSpan.FromMinutes(_appSettings.RefreshInterval))
             return;
 
-        _logger.LogInformation("Auto-clearing Climate switch in HomeAssistant after {Minutes:F0} min ON (no OFF command sent).", onFor.TotalMinutes);
+        logger.LogInformation("Auto-clearing Climate switch in HomeAssistant after {Minutes:F0} min ON (no OFF command sent).", onFor.TotalMinutes);
         await context.SetSwitchStateAsync("Climate", false);
     }
 
@@ -211,10 +204,10 @@ public class AppService : IAppService
     {
         if (command.IsDangerous && !_appSettings.EnableDangerousCommands)
         {
-            _logger.LogWarning("{command} not sent. Set \"EnableDangerousCommands\" option if you want to use it. ", command.Message);
+            logger.LogWarning("{command} not sent. Set \"EnableDangerousCommands\" option if you want to use it. ", command.Message);
             return false;
         }
 
-        return await _fcaClient.TrySendCommandAsync(vin, command.Message, _fcaSettings.Pin, command.Action);
+        return await fcaClient.TrySendCommandAsync(vin, command.Message, _fcaSettings.Pin, command.Action);
     }
 }

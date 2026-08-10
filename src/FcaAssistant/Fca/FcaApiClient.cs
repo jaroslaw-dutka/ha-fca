@@ -10,22 +10,19 @@ using Microsoft.Extensions.Options;
 
 namespace FcaAssistant.Fca;
 
-public class FcaApiClient : IFcaApiClient
+public class FcaApiClient(
+    ILogger<FcaApiClient> logger,
+    IOptions<FcaSettings> options,
+    IFcaApiConfigProvider configProvider,
+    IFlurlClientCache flurlClientCache)
+    : IFcaApiClient
 {
     private readonly CookieJar _cookieJar = new();
-    private readonly ILogger _logger;
-    private readonly FcaSettings _settings;
-    private readonly FcaApiConfig _apiConfig;
-    private readonly IFlurlClient _flurlClient;
+    private readonly ILogger _logger = logger;
+    private readonly FcaSettings _settings = options.Value;
+    private readonly FcaApiConfig _apiConfig = configProvider.Get();
+    private readonly IFlurlClient _flurlClient = flurlClientCache.GetOrAdd("fca_api");
 
-    public FcaApiClient(ILogger<FcaApiClient> logger, IOptions<FcaSettings> options, IFcaApiConfigProvider configProvider, IFlurlClientCache flurlClientCache)
-    {
-        _logger = logger;
-        _settings = options.Value;
-        _apiConfig = configProvider.Get();
-        _flurlClient = flurlClientCache.GetOrAdd("fca_api");
-    }
-    
     public async Task<FcaBootstrapResponse> Bootstrap() => await _flurlClient
         .Request(_apiConfig.LoginUrl)
         .AppendPathSegment("accounts.webSdkBootstrap")

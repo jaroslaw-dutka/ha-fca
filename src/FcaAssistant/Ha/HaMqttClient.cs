@@ -9,20 +9,15 @@ using MQTTnet;
 
 namespace FcaAssistant.Ha;
 
-public class HaMqttClient : MqttClientBase, IHaMqttClient
+public class HaMqttClient(ILogger<HaMqttClient> logger, IOptions<HaMqttSettings> options)
+    : MqttClientBase(logger, "HomeAssistant"), IHaMqttClient
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
     private readonly Dictionary<string, IHaSetEntity> _setEntities = new();
-    private readonly HaMqttSettings _settings;
-
-    public HaMqttClient(ILogger<HaMqttClient> logger, IOptions<HaMqttSettings> options)
-        : base(logger, "HomeAssistant")
-    {
-        _settings = options.Value;
-    }
+    private readonly HaMqttSettings _settings = options.Value;
 
     public Task ConnectAsync(CancellationToken cancellationToken)
     {

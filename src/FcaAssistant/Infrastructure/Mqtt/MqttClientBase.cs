@@ -15,11 +15,10 @@ namespace FcaAssistant.Infrastructure.Mqtt;
 /// <item>an outbound queue so publishes made while offline are flushed on connect</item>
 /// </list>
 /// </summary>
-public abstract class MqttClientBase : IAsyncDisposable
+public abstract class MqttClientBase(ILogger logger, string name) : IAsyncDisposable
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
 
-    private readonly string _name;
     private readonly SemaphoreSlim _connectLock = new(1, 1);
     private readonly List<string> _subscriptions = new();
     private readonly ConcurrentQueue<MqttApplicationMessage> _outbound = new();
@@ -27,13 +26,7 @@ public abstract class MqttClientBase : IAsyncDisposable
     private IMqttClient? _client;
     private CancellationToken _cancellationToken;
 
-    protected MqttClientBase(ILogger logger, string name)
-    {
-        Logger = logger;
-        _name = name;
-    }
-
-    protected ILogger Logger { get; }
+    protected ILogger Logger { get; } = logger;
 
     /// <summary>
     /// Builds the options for a single connect attempt. Invoked on every (re)connect,
@@ -94,7 +87,7 @@ public abstract class MqttClientBase : IAsyncDisposable
             }
             catch (Exception e)
             {
-                Logger.LogDebug(e, "Publish to {name} MQTT topic {topic} failed, queueing", _name, message.Topic);
+                Logger.LogDebug(e, "Publish to {name} MQTT topic {topic} failed, queueing", name, message.Topic);
             }
         }
 
@@ -104,13 +97,13 @@ public abstract class MqttClientBase : IAsyncDisposable
 
     private Task OnConnectedAsync(MqttClientConnectedEventArgs args)
     {
-        Logger.LogInformation("Connected to {name} MQTT: {reason}", _name, args.ConnectResult.ReasonString);
+        Logger.LogInformation("Connected to {name} MQTT: {reason}", name, args.ConnectResult.ReasonString);
         return Task.CompletedTask;
     }
 
     private async Task OnDisconnectedAsync(MqttClientDisconnectedEventArgs args)
     {
-        Logger.LogWarning("Disconnected from {name} MQTT: {reason}", _name, args.ReasonString);
+        Logger.LogWarning("Disconnected from {name} MQTT: {reason}", name, args.ReasonString);
 
         try
         {
@@ -127,7 +120,7 @@ public abstract class MqttClientBase : IAsyncDisposable
     private async Task OnApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs args)
     {
         var message = args.ApplicationMessage;
-        Logger.LogDebug("{name} MQTT: {topic} - {payload}", _name, message.Topic, message.ConvertPayloadToString());
+        Logger.LogDebug("{name} MQTT: {topic} - {payload}", name, message.Topic, message.ConvertPayloadToString());
         await OnMessageReceivedAsync(message);
     }
 
@@ -167,7 +160,7 @@ public abstract class MqttClientBase : IAsyncDisposable
                 }
                 catch (Exception e)
                 {
-                    Logger.LogDebug(e, "Failed to connect to {name} MQTT, retrying in {seconds}s", _name, ReconnectDelay.TotalSeconds);
+                    Logger.LogDebug(e, "Failed to connect to {name} MQTT, retrying in {seconds}s", name, ReconnectDelay.TotalSeconds);
                     try
                     {
                         await Task.Delay(ReconnectDelay, _cancellationToken);
@@ -196,7 +189,7 @@ public abstract class MqttClientBase : IAsyncDisposable
             catch (Exception e)
             {
                 // Put it back and stop; the next connect will try again.
-                Logger.LogDebug(e, "Flushing queued {name} MQTT message to {topic} failed, re-queueing", _name, message.Topic);
+                Logger.LogDebug(e, "Flushing queued {name} MQTT message to {topic} failed, re-queueing", name, message.Topic);
                 _outbound.Enqueue(message);
                 return;
             }

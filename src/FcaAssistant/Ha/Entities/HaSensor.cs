@@ -22,12 +22,8 @@ public class HaSensor : HaEntity, IHaStateEntity
     }
 }
 
-public class HaSensor<T> : HaSensor, IHaAttributesEntity
+public class HaSensor<T>(HaDevice device, string name) : HaSensor(device, name), IHaAttributesEntity
 {
     public string SerializedAttributes => JsonSerializer.Serialize(Attributes);
     public T Attributes { get; set; }
-
-    public HaSensor(HaDevice device, string name) : base(device, name)
-    {
-    }
 }

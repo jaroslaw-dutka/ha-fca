@@ -5,16 +5,11 @@ using Microsoft.Extensions.Options;
 
 namespace FcaAssistant.Ha;
 
-public class HaApiClient : IHaApiClient
+public class HaApiClient(IOptions<HaApiSettings> options, IFlurlClientCache flurlClientCache)
+    : IHaApiClient
 {
-    private readonly HaApiSettings _settings;
-    private readonly IFlurlClient _flurlClient;
-
-    public HaApiClient(IOptions<HaApiSettings> options, IFlurlClientCache flurlClientCache)
-    {
-        _settings = options.Value;
-        _flurlClient = flurlClientCache.GetOrAdd("ha_api");
-    }
+    private readonly HaApiSettings _settings = options.Value;
+    private readonly IFlurlClient _flurlClient = flurlClientCache.GetOrAdd("ha_api");
 
     public async Task<HaConfig> GetConfigAsync() => await _flurlClient
         .Request(_settings.Url)
