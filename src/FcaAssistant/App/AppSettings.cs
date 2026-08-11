@@ -9,4 +9,7 @@ public record AppSettings
     public bool AutoRefreshBattery { get; set; }
     public bool EnableDangerousCommands { get; set; }
     public string? CarUnknownLocation { get; set; }
+
+    /// <summary>The HA unit distances are converted to, derived from <see cref="DistanceUnit"/>.</summary>
+    public string TargetDistanceUnit => DistanceUnit == DistanceUnit.Miles ? "mi" : "km";
 }
