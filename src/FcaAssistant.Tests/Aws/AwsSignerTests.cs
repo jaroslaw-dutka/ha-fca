@@ -29,6 +29,17 @@ public class AwsSignerTests
     }
 
     [Fact]
+    public void BuildCanonicalRequest_MultipleHeaders_AreLowercasedSortedAndSemicolonJoined()
+    {
+        var query = new Dictionary<string, string>();
+        var headers = new Dictionary<string, string> { ["X-Custom"] = "b", ["Host"] = "h" };
+
+        var canonical = AwsSigner.BuildCanonicalRequest("GET", "/", query, headers, "HASH");
+
+        Assert.Equal("GET\n/\n\nhost:h\nx-custom:b\n\nhost;x-custom\nHASH", canonical);
+    }
+
+    [Fact]
     public void BuildStringToSign_HasAlgorithmDateScopeAndHash()
     {
         const string scope = "20200501/eu-west-1/iotdata/aws4_request";

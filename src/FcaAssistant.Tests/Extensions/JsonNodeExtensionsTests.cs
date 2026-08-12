@@ -69,4 +69,15 @@ public class JsonNodeExtensionsTests
 
         Assert.Equal("true", result["car_charging"]);
     }
+
+    [Fact]
+    public void Flatten_ArrayOfObjects_IndexesThenNestsKeys()
+    {
+        var node = JsonNode.Parse("""{ "tyres": [ { "psi": 32 }, { "psi": 30 } ] }""");
+
+        var result = node!.Flatten("car");
+
+        Assert.Equal("32", result["car_tyres_0_psi"]);
+        Assert.Equal("30", result["car_tyres_1_psi"]);
+    }
 }
