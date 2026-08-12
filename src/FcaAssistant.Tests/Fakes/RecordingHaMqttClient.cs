@@ -8,8 +8,13 @@ public class RecordingHaMqttClient : IHaMqttClient
     public List<IHaEntity> Announced { get; } = [];
     public List<IHaEntity> Published { get; } = [];
     public List<IHaSetEntity> Subscribed { get; } = [];
+    public bool Connected { get; private set; }
 
-    public Task ConnectAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task ConnectAsync(CancellationToken cancellationToken)
+    {
+        Connected = true;
+        return Task.CompletedTask;
+    }
 
     public Task AnnounceAsync(IHaEntity entity)
     {

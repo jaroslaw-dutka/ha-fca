@@ -20,18 +20,18 @@ public class FcaLiveClient : MqttClientBase, IFcaClient
     private readonly IFcaApiClient _apiClient;
     private readonly FcaSettings _settings;
     private readonly FcaApiConfig _apiConfig;
-    private readonly AmazonCognitoIdentityClient _cognitoClient;
+    private readonly IAmazonCognitoIdentity _cognitoClient;
     private readonly ConcurrentDictionary<Guid, TaskCompletionSource> _commands = new();
     private FcaSession? _fcaSession;
 
-    public FcaLiveClient(ILogger<FcaLiveClient> logger, IOptions<FcaSettings> options, IFcaApiConfigProvider configProvider, IFcaApiClient apiClient)
+    public FcaLiveClient(ILogger<FcaLiveClient> logger, IOptions<FcaSettings> options, IFcaApiConfigProvider configProvider, IFcaApiClient apiClient, IAmazonCognitoIdentity cognitoClient)
         : base(logger, "FCA")
     {
         _logger = logger;
         _apiClient = apiClient;
         _settings = options.Value;
         _apiConfig = configProvider.Get();
-        _cognitoClient = new AmazonCognitoIdentityClient(new AnonymousAWSCredentials(), _apiConfig.AwsEndpoint);
+        _cognitoClient = cognitoClient;
     }
 
     public async Task ConnectAsync(CancellationToken cancellationToken)

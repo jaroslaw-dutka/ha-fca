@@ -1,4 +1,6 @@
-﻿using FcaAssistant.Fca.Model;
+﻿using Amazon.CognitoIdentity;
+using Amazon.Runtime;
+using FcaAssistant.Fca.Model;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -13,6 +15,11 @@ public static class ServiceCollectionExtensions
         .AddSingleton<IFcaApiClient, FcaApiClient>()
         .AddSingleton<FcaLiveClient>()
         .AddSingleton<FcaMockClient>()
+        .AddSingleton<IAmazonCognitoIdentity>(sp =>
+        {
+            var apiConfig = sp.GetRequiredService<IFcaApiConfigProvider>().Get();
+            return new AmazonCognitoIdentityClient(new AnonymousAWSCredentials(), apiConfig.AwsEndpoint);
+        })
         .AddSingleton<IFcaClient>(s => s.GetRequiredService<IOptions<FcaSettings>>().Value.Brand switch
         {
             FcaBrand.Mock => s.GetRequiredService<FcaMockClient>(),
