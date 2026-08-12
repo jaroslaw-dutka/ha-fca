@@ -1,7 +1,12 @@
 namespace FcaAssistant.App;
 
-/// <summary>Lets a caller wake the poll loop so it runs its next cycle immediately instead of waiting for the interval.</summary>
+/// <summary>
+/// The "run the poll loop now" signal. Command handlers call <see cref="Trigger"/>; the poll loop
+/// waits on <see cref="Requested"/> to run its next cycle immediately instead of waiting for the interval.
+/// </summary>
 public interface IRefreshTrigger
 {
+    WaitHandle Requested { get; }
+
     void Trigger();
 }

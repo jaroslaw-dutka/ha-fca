@@ -9,9 +9,8 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddApp(this IServiceCollection services, IConfiguration configuration) => services
         .Configure<AppSettings>(configuration.GetSection("app"))
-        .AddSingleton<AppService>()
-        .AddSingleton<IAppService>(sp => sp.GetRequiredService<AppService>())
-        .AddSingleton<IRefreshTrigger>(sp => sp.GetRequiredService<AppService>())
+        .AddSingleton<IAppService, AppService>()
+        .AddSingleton<IRefreshTrigger, RefreshTrigger>()
         .AddSingleton<IVehicleDetailsMapper, VehicleDetailsMapper>()
         .AddSingleton<IVehicleHandler, AutoRefreshHandler>()
         .AddSingleton<IVehicleHandler, LocationHandler>()
