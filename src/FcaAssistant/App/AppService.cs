@@ -15,13 +15,13 @@ public class AppService(
     IFcaClient fcaClient,
     IHaApiClient haApiClient,
     IHaMqttClient haMqttClient,
-    ICommandDispatcher commandDispatcher,
     IEnumerable<IVehicleHandler> handlers)
-    : IAppService
+    : IAppService, IRefreshTrigger
 {
     private readonly AppSettings _appSettings = appConfig.Value;
     private readonly FcaSettings _fcaSettings = fcaConfig.Value;
     private readonly IReadOnlyList<IVehicleHandler> _handlers = handlers.ToList();
+    private readonly AutoResetEvent _refreshRequested = new(false);
 
     public async Task RunAsync(CancellationToken cancellationToken)
     {
@@ -76,7 +76,10 @@ public class AppService(
                 logger.LogInformation("Next update in {delay} minutes.", _appSettings.RefreshInterval);
             }
 
-            WaitHandle.WaitAny([cancellationToken.WaitHandle, commandDispatcher.RefreshRequested], TimeSpan.FromMinutes(_appSettings.RefreshInterval));
+            WaitHandle.WaitAny([cancellationToken.WaitHandle, _refreshRequested], TimeSpan.FromMinutes(_appSettings.RefreshInterval));
         }
     }
+
+    public void Trigger() =>
+        _refreshRequested.Set();
 }

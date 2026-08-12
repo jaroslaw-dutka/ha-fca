@@ -7,7 +7,6 @@ public record AppSettings
     public int RefreshInterval { get; set; }
     public bool AutoRefreshLocation { get; set; }
     public bool AutoRefreshBattery { get; set; }
-    public bool EnableDangerousCommands { get; set; }
     public string? CarUnknownLocation { get; set; }
 
     /// <summary>The HA unit distances are converted to, derived from <see cref="DistanceUnit"/>.</summary>

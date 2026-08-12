@@ -9,7 +9,8 @@ namespace FcaAssistant.App.Handlers;
 
 public class CommandEntitiesHandler(
     IHaEntityPublisher publisher,
-    ICommandDispatcher dispatcher,
+    IFcaClient fcaClient,
+    IRefreshTrigger refreshTrigger,
     ILogger<CommandEntitiesHandler> logger)
     : IVehicleHandler
 {
@@ -33,13 +34,15 @@ public class CommandEntitiesHandler(
         publisher.RegisterAsync(new HaButton(device, name, async (_, state) =>
         {
             logger.LogDebug("Button {Name} clicked to state: {State}", name, state);
-            await dispatcher.DispatchAsync(command, vin);
+            if (await fcaClient.TrySendCommandAsync(vin, command))
+                refreshTrigger.Trigger();
         }));
 
     private Task BindSwitch(HaDevice device, string vin, string name, FcaCommand onCommand, FcaCommand offCommand) =>
         publisher.RegisterAsync(new HaSwitch(device, name, async (entity, state) =>
         {
             logger.LogDebug("Switch {Name} changed to state: {State}", name, state);
-            await dispatcher.DispatchAsync(entity.IsOn ? onCommand : offCommand, vin);
+            if (await fcaClient.TrySendCommandAsync(vin, entity.IsOn ? onCommand : offCommand))
+                refreshTrigger.Trigger();
         }));
 }

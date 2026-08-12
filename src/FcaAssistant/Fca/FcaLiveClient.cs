@@ -7,6 +7,7 @@ using FcaAssistant.Fca.Entities;
 using FcaAssistant.Fca.Model;
 using FcaAssistant.Infrastructure.Mqtt;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MQTTnet;
 
 namespace FcaAssistant.Fca;
@@ -17,16 +18,18 @@ public class FcaLiveClient : MqttClientBase, IFcaClient
 
     private readonly ILogger<FcaLiveClient> _logger;
     private readonly IFcaApiClient _apiClient;
+    private readonly FcaSettings _settings;
     private readonly FcaApiConfig _apiConfig;
     private readonly AmazonCognitoIdentityClient _cognitoClient;
     private readonly ConcurrentDictionary<Guid, TaskCompletionSource> _commands = new();
     private FcaSession? _fcaSession;
 
-    public FcaLiveClient(ILogger<FcaLiveClient> logger, IFcaApiConfigProvider configProvider, IFcaApiClient apiClient)
+    public FcaLiveClient(ILogger<FcaLiveClient> logger, IOptions<FcaSettings> options, IFcaApiConfigProvider configProvider, IFcaApiClient apiClient)
         : base(logger, "FCA")
     {
         _logger = logger;
         _apiClient = apiClient;
+        _settings = options.Value;
         _apiConfig = configProvider.Get();
         _cognitoClient = new AmazonCognitoIdentityClient(new AnonymousAWSCredentials(), _apiConfig.AwsEndpoint);
     }
@@ -83,24 +86,30 @@ public class FcaLiveClient : MqttClientBase, IFcaClient
         return result;
     }
 
-    public async Task<bool> TrySendCommandAsync(string vin, string command, string pin, string action)
+    public async Task<bool> TrySendCommandAsync(string vin, FcaCommand command)
     {
+        if (command.IsDangerous && !_settings.EnableDangerousCommands)
+        {
+            _logger.LogWarning("{command} not sent. Set \"EnableDangerousCommands\" option if you want to use it. ", command.Message);
+            return false;
+        }
+
         try
         {
-            await SendCommandAsync(vin, command, pin, action);
+            await SendCommandAsync(vin, command.Message, _settings.Pin, command.Action);
             await Task.Delay(TimeSpan.FromSeconds(5));
-            _logger.LogInformation("Command: {command} SUCCESSFUL", command);
+            _logger.LogInformation("Command: {command} SUCCESSFUL", command.Message);
             return true;
         }
         catch (Exception e)
         {
-            _logger.LogError("Command: {command} ERROR. Maybe wrong pin?", command);
+            _logger.LogError("Command: {command} ERROR. Maybe wrong pin?", command.Message);
             _logger.LogDebug(e, e.Message);
             return false;
         }
     }
 
-    public async Task SendCommandAsync(string vin, string command, string pin, string action)
+    private async Task SendCommandAsync(string vin, string command, string? pin, string action)
     {
         ArgumentNullException.ThrowIfNull(_fcaSession);
 

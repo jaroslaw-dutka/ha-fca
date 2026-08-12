@@ -25,15 +25,9 @@ public class FcaMockClient(ILogger<FcaMockClient> logger) : IFcaClient
         }
     });
 
-    public async Task SendCommandAsync(string vin, string command, string pin, string action)
+    public async Task<bool> TrySendCommandAsync(string vin, FcaCommand command)
     {
-        logger.LogInformation("Mock sending command {Command} with action {Action} to vehicle {Vin}", command, action, vin);
-        await Task.Delay(1000);
-    }
-
-    public async Task<bool> TrySendCommandAsync(string vin, string command, string pin, string action)
-    {
-        logger.LogInformation("Mock try sending command {Command} with action {Action} to vehicle {Vin}", command, action, vin);
+        logger.LogInformation("Mock try sending command {Command} with action {Action} to vehicle {Vin}", command.Message, command.Action, vin);
         await Task.Delay(1000);
         return true;
     }

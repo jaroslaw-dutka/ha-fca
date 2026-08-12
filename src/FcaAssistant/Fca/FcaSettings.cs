@@ -13,4 +13,6 @@ public record FcaSettings
     public string Password { get; set; }
 
     public string? Pin { get; set; }
+
+    public bool EnableDangerousCommands { get; set; }
 }

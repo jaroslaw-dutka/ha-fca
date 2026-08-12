@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace FcaAssistant.App.Handlers;
 
-public class AutoRefreshHandler(ICommandDispatcher dispatcher, IOptions<AppSettings> appConfig) : IVehicleHandler
+public class AutoRefreshHandler(IFcaClient fcaClient, IOptions<AppSettings> appConfig) : IVehicleHandler
 {
     private readonly AppSettings _appSettings = appConfig.Value;
 
@@ -12,10 +12,10 @@ public class AutoRefreshHandler(ICommandDispatcher dispatcher, IOptions<AppSetti
         var vin = context.Vehicle.Vehicle.Vin;
 
         if (_appSettings.AutoRefreshBattery)
-            await dispatcher.TrySendAsync(FcaCommands.DeepRefresh, vin);
+            await fcaClient.TrySendCommandAsync(vin, FcaCommands.DeepRefresh);
 
         if (_appSettings.AutoRefreshLocation)
-            await dispatcher.TrySendAsync(FcaCommands.VehicleFinder, vin);
+            await fcaClient.TrySendCommandAsync(vin, FcaCommands.VehicleFinder);
     }
 }
  
