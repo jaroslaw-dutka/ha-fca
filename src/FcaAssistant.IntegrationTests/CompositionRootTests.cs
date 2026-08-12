@@ -33,11 +33,12 @@ public class CompositionRootTests
     }
 
     [Fact]
-    public async Task AppService_ResolvesWithFullDependencyGraph()
+    public async Task AppLoop_ResolvesWithFullDependencyGraph()
     {
         await using var provider = BuildProvider();
 
-        Assert.NotNull(provider.GetRequiredService<IAppService>());
+        Assert.IsType<AppLoop>(provider.GetRequiredService<IAppService>());
+        Assert.IsType<VehicleProcessor>(provider.GetRequiredService<IVehicleProcessor>());
     }
 
     [Fact]

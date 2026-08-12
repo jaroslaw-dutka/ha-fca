@@ -8,10 +8,11 @@ public class FakeFcaClient : IFcaClient
 {
     public List<(string Vin, FcaCommand Command)> Sent { get; } = [];
     public bool SendResult { get; set; } = true;
+    public List<VehicleInfo> Vehicles { get; } = [];
 
     public Task ConnectAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    public Task<List<VehicleInfo>> GetVehiclesAsync() => Task.FromResult(new List<VehicleInfo>());
+    public Task<List<VehicleInfo>> GetVehiclesAsync() => Task.FromResult(Vehicles);
 
     public Task<bool> TrySendCommandAsync(string vin, FcaCommand command)
     {

@@ -1,5 +1,3 @@
-﻿using FcaAssistant.App.Handlers;
-using FcaAssistant.Extensions;
 using FcaAssistant.Fca;
 using FcaAssistant.Ha;
 using Flurl.Http;
@@ -8,20 +6,23 @@ using Microsoft.Extensions.Options;
 
 namespace FcaAssistant.App;
 
-public class AppService(
-    ILogger<AppService> logger,
+/// <summary>
+/// Owns the application lifecycle: initial delay, backend connections, and the polling loop that
+/// drives <see cref="IVehicleProcessor"/> on every tick. Keeps looping across failures so a
+/// transient backend error never stops the schedule.
+/// </summary>
+public class AppLoop(
+    ILogger<AppLoop> logger,
     IOptions<AppSettings> appConfig,
     IOptions<FcaSettings> fcaConfig,
     IFcaClient fcaClient,
-    IHaApiClient haApiClient,
     IHaMqttClient haMqttClient,
     IRefreshTrigger refreshTrigger,
-    IEnumerable<IVehicleHandler> handlers)
+    IVehicleProcessor processor)
     : IAppService
 {
     private readonly AppSettings _appSettings = appConfig.Value;
     private readonly FcaSettings _fcaSettings = fcaConfig.Value;
-    private readonly IReadOnlyList<IVehicleHandler> _handlers = handlers.ToList();
 
     public async Task RunAsync(CancellationToken cancellationToken)
     {
@@ -38,23 +39,7 @@ public class AppService(
         {
             try
             {
-                logger.LogInformation("Fetching new data...");
-
-                var config = await haApiClient.GetConfigAsync();
-                logger.LogInformation("Using unit system: {unit}", config.UnitSystem.Dump());
-                logger.LogInformation("Distance conversion: {sourceUnit}->{targetUnit}", config.UnitSystem.Length, _appSettings.TargetDistanceUnit);
-
-                var states = await haApiClient.GetStatesAsync();
-
-                foreach (var vehicleInfo in await fcaClient.GetVehiclesAsync())
-                {
-                    logger.LogInformation("Processing CAR: {vin}", vehicleInfo.Vehicle.Vin);
-
-                    var context = new CarContext(vehicleInfo, states);
-                    foreach (var handler in _handlers)
-                        await handler.HandleAsync(context, cancellationToken);
-                }
-                logger.LogInformation("Processing COMPLETED.");
+                await processor.ProcessAsync(cancellationToken);
             }
             catch (FlurlHttpException exception)
             {
