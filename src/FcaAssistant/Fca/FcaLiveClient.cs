@@ -24,8 +24,8 @@ public class FcaLiveClient : MqttClientBase, IFcaClient
     private readonly ConcurrentDictionary<Guid, TaskCompletionSource> _commands = new();
     private FcaSession? _fcaSession;
 
-    public FcaLiveClient(ILogger<FcaLiveClient> logger, IOptions<FcaSettings> options, IFcaApiConfigProvider configProvider, IFcaApiClient apiClient, IAmazonCognitoIdentity cognitoClient)
-        : base(logger, "FCA")
+    public FcaLiveClient(ILogger<FcaLiveClient> logger, IOptions<FcaSettings> options, IFcaApiConfigProvider configProvider, IFcaApiClient apiClient, IAmazonCognitoIdentity cognitoClient, IMqttClientFactory clientFactory)
+        : base(logger, clientFactory, "FCA")
     {
         _logger = logger;
         _apiClient = apiClient;

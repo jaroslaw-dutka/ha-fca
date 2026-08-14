@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using FcaAssistant.Ha;
 using FcaAssistant.Ha.Entities;
 using FcaAssistant.Ha.Model;
+using FcaAssistant.Infrastructure.Mqtt;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using MQTTnet;
@@ -36,7 +37,8 @@ public class HaMqttClientTests
         {
             await using var client = new HaMqttClient(
                 NullLogger<HaMqttClient>.Instance,
-                Options.Create(new HaMqttSettings { ClientId = "it-test", Server = "localhost", Port = port }));
+                Options.Create(new HaMqttSettings { ClientId = "it-test", Server = "localhost", Port = port }),
+                new MqttnetClientFactory());
 
             await client.ConnectAsync(CancellationToken.None);
 

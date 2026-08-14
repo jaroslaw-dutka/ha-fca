@@ -16,7 +16,8 @@ public class FcaLiveClientTests
         Options.Create(new FcaSettings { Pin = pin, EnableDangerousCommands = enableDangerousCommands }),
         new FakeFcaApiConfigProvider(),
         _api,
-        _cognito);
+        _cognito,
+        new FakeMqttClientFactory(new FakeMqttClient()));
 
     // A cancelled token lets ConnectAsync run the (network-free) login handshake while the background
     // MQTT connect loop bails out immediately instead of dialling the real AWS IoT endpoint.

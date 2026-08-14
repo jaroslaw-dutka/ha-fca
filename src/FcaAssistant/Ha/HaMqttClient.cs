@@ -9,8 +9,8 @@ using MQTTnet;
 
 namespace FcaAssistant.Ha;
 
-public class HaMqttClient(ILogger<HaMqttClient> logger, IOptions<HaMqttSettings> options)
-    : MqttClientBase(logger, "HomeAssistant"), IHaMqttClient
+public class HaMqttClient(ILogger<HaMqttClient> logger, IOptions<HaMqttSettings> options, IMqttClientFactory clientFactory)
+    : MqttClientBase(logger, clientFactory, "HomeAssistant"), IHaMqttClient
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {

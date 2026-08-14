@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using FcaAssistant.Infrastructure.Mqtt;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddHttp(this IServiceCollection services, IConfiguration configuration) => services
         .AddHttpClient()
+        .AddSingleton<IMqttClientFactory, MqttnetClientFactory>()
         .AddSingleton<PollyRequestHandler>()
         .AddSingleton(sp => new FlurlClientCache().WithDefaults(builder =>
         {

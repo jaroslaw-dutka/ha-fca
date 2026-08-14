@@ -15,10 +15,9 @@ namespace FcaAssistant.Infrastructure.Mqtt;
 /// <item>an outbound queue so publishes made while offline are flushed on connect</item>
 /// </list>
 /// </summary>
-public abstract class MqttClientBase(ILogger logger, string name) : IAsyncDisposable
+public abstract class MqttClientBase(ILogger logger, IMqttClientFactory clientFactory, string name) : IAsyncDisposable
 {
-    private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
-
+    private readonly TimeSpan _reconnectDelay = TimeSpan.FromSeconds(5);
     private readonly SemaphoreSlim _connectLock = new(1, 1);
     private readonly List<string> _subscriptions = new();
     private readonly ConcurrentQueue<MqttApplicationMessage> _outbound = new();
@@ -51,18 +50,19 @@ public abstract class MqttClientBase(ILogger logger, string name) : IAsyncDispos
 
     /// <summary>
     /// Wires up the client and kicks off the connection loop in the background, mirroring
-    /// the old managed client: returns immediately and keeps (re)connecting on its own.
+    /// the old managed client: callers may ignore the returned task (it keeps (re)connecting
+    /// on its own), or await it to observe when the first connect attempt settles.
     /// </summary>
-    protected void StartMqtt(CancellationToken cancellationToken)
+    protected Task StartMqtt(CancellationToken cancellationToken)
     {
         _cancellationToken = cancellationToken;
 
-        _client = new MqttClientFactory().CreateMqttClient();
+        _client = clientFactory.CreateClient();
         _client.ConnectedAsync += OnConnectedAsync;
         _client.DisconnectedAsync += OnDisconnectedAsync;
         _client.ApplicationMessageReceivedAsync += OnApplicationMessageReceivedAsync;
 
-        _ = ConnectCoreAsync();
+        return ConnectCoreAsync();
     }
 
     protected Task PublishAsync(string topic, string? payload, bool retain = false)
@@ -107,7 +107,7 @@ public abstract class MqttClientBase(ILogger logger, string name) : IAsyncDispos
 
         try
         {
-            await Task.Delay(ReconnectDelay, _cancellationToken);
+            await Task.Delay(_reconnectDelay, _cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -160,10 +160,10 @@ public abstract class MqttClientBase(ILogger logger, string name) : IAsyncDispos
                 }
                 catch (Exception e)
                 {
-                    Logger.LogDebug(e, "Failed to connect to {name} MQTT, retrying in {seconds}s", name, ReconnectDelay.TotalSeconds);
+                    Logger.LogDebug(e, "Failed to connect to {name} MQTT, retrying in {seconds}s", name, _reconnectDelay.TotalSeconds);
                     try
                     {
-                        await Task.Delay(ReconnectDelay, _cancellationToken);
+                        await Task.Delay(_reconnectDelay, _cancellationToken);
                     }
                     catch (OperationCanceledException)
                     {
