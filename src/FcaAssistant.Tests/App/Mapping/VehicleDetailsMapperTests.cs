@@ -113,6 +113,30 @@ public class VehicleDetailsMapperTests
     }
 
     [Fact]
+    public void LiteralNullValue_WithUnit_IsReportedAsUnknown()
+    {
+        var result = Map("car_tyrePressure_0_pressure_value", "null", properties: ("car_tyrePressure_0_pressure_unit", "kPa"));
+
+        Assert.Equal(new SensorPresentation("None", null, "kPa"), result);
+    }
+
+    [Fact]
+    public void LiteralNullDistance_IsReportedAsUnknown()
+    {
+        var result = Map("car_trips_0_totalDistance_value", "null", "mi", ("car_trips_0_totalDistance_unit", "km"));
+
+        Assert.Equal(new SensorPresentation("None", "distance", "km"), result);
+    }
+
+    [Fact]
+    public void LiteralNullValue_WithoutUnit_IsReportedAsUnknown()
+    {
+        var result = Map("car_daysToService", "null");
+
+        Assert.Equal(new SensorPresentation("None", null, null), result);
+    }
+
+    [Fact]
     public void Distance_MilesToMiles_IsUnchanged()
     {
         var result = Map("car_range_value", "50", "mi", ("car_range_unit", "mi"));

@@ -4,8 +4,15 @@ namespace FcaAssistant.App.Mapping;
 
 public class VehicleDetailsMapper : IVehicleDetailsMapper
 {
+    // Home Assistant's MQTT sensor treats the payload "None" as "unknown". The FCA API reports missing
+    // readings as the literal string "null", which HA rejects for sensors with a unit or device class.
+    private const string HaUnknownState = "None";
+
     public SensorPresentation Map(string key, string value, string targetUnit, IReadOnlyDictionary<string, string> properties)
     {
+        if (value is "null")
+            value = HaUnknownState;
+
         switch (key)
         {
             case "car_evInfo_battery_stateOfCharge":
